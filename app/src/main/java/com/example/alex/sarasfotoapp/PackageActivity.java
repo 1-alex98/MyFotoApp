@@ -55,6 +55,7 @@ public class PackageActivity extends AppCompatActivity {
 
     private void loadNewPackage() {
         List<File> listFiles = getListFiles(new File(pathname));
+        findViewById(R.id.noPackage).setVisibility(listFiles.size()==0?View.VISIBLE:View.GONE);
         List<String> fileNames= new ArrayList<>();
         final HashMap<String,File> fileLookUp= new HashMap<>();
         for(File file:listFiles){
