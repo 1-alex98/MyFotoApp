@@ -4,25 +4,29 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
-
-import com.example.alex.sarasfotoapp.R;
+import android.widget.TextView;
+import android.widget.Toast;
 
 public class CodeActivty extends AppCompatActivity {
 
     public static final String returnKey="return";
     private static final String PREFERENCE_KEY="Sara";
     private static final String PASSWORD_KEY="password";
+    public static String password;
     private static SharedPreferences sharedPreferences;
     private EditText passwordMainTextField;
     private EditText passwordRepeatTextField;
     private Button saveButton;
     private ViewMode viewMode;
-    public static String password;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +44,68 @@ public class CodeActivty extends AppCompatActivity {
             setPassword();
         }
         passwordMainTextField.selectAll();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.code_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        AdapterView.AdapterContextMenuInfo contextMenuInfo = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+        switch (item.getItemId()) {
+            case R.id.changePassword:
+                changePasswordDialog();
+                break;
+
+        }
+
+        return true;
+    }
+
+    private void changePasswordDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Change password...");
+        builder.setMessage("Enter your old and new password");
+        View inflate = getLayoutInflater().inflate(R.layout.change_password_dialog, null);
+        final TextView error = (TextView) findViewById(R.id.error);
+        error.setVisibility(View.GONE);
+        builder.setView(inflate);
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                error.setVisibility(View.VISIBLE);
+                EditText old = (EditText) findViewById(R.id.oldPass);
+                EditText firstNew = (EditText) findViewById(R.id.firstPass);
+                EditText secondNew = (EditText) findViewById(R.id.secondPass);
+                if (!old.getText().toString().equals(sharedPreferences.getString(PASSWORD_KEY, ""))) {
+                    error.setText("Old password wrong");
+                    old.selectAll();
+                    return;
+                }
+                if (!firstNew.getText().toString().equals(secondNew.getText().toString())) {
+                    error.setText("New passwords don't match");
+                    firstNew.selectAll();
+                    return;
+                }
+                SharedPreferences.Editor edit = sharedPreferences.edit();
+                edit.putString(PASSWORD_KEY, firstNew.getText().toString());
+                edit.apply();
+                Toast.makeText(CodeActivty.this, "Password changed", Toast.LENGTH_LONG).show();
+            }
+        });
+        builder.create().show();
+
     }
 
     @Override
@@ -138,6 +204,6 @@ public class CodeActivty extends AppCompatActivity {
     private enum ViewMode {
         SET,
         REQUEST,
-        REQUEST_AND_RETURN;
+        REQUEST_AND_RETURN
     }
 }
