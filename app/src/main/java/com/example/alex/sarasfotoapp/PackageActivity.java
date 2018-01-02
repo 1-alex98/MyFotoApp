@@ -10,10 +10,10 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -39,8 +39,8 @@ import static android.support.v4.content.FileProvider.getUriForFile;
 
 public class PackageActivity extends AppCompatActivity {
     private static final int PICK_IMAGE_REQUEST = 1;
-    private boolean openother =false;
     private static String pathname;
+    private boolean openother = false;
     private ListView listView;
 
 
@@ -130,9 +130,12 @@ public class PackageActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        if(openother)return;
+        if (openother) {
+            openother = false;
+            return;
+        }
         CodeActivty.password=null;
-        openother =false;
+
     }
 
     public void createPackage(View view) {
