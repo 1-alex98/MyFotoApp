@@ -71,8 +71,8 @@ public class CodeActivty extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Change password...");
         builder.setMessage("Enter your old and new password");
-        View inflate = getLayoutInflater().inflate(R.layout.change_password_dialog, null);
-        final TextView error = (TextView) findViewById(R.id.error);
+        final View inflate = getLayoutInflater().inflate(R.layout.change_password_dialog, null);
+        final TextView error = (TextView) inflate.findViewById(R.id.error);
         error.setVisibility(View.GONE);
         builder.setView(inflate);
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -84,10 +84,18 @@ public class CodeActivty extends AppCompatActivity {
         builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        final AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 error.setVisibility(View.VISIBLE);
-                EditText old = (EditText) findViewById(R.id.oldPass);
-                EditText firstNew = (EditText) findViewById(R.id.firstPass);
-                EditText secondNew = (EditText) findViewById(R.id.secondPass);
+                EditText old = (EditText) inflate.findViewById(R.id.oldPass);
+                EditText firstNew = (EditText) inflate.findViewById(R.id.firstPass);
+                EditText secondNew = (EditText) inflate.findViewById(R.id.secondPass);
                 if (!old.getText().toString().equals(sharedPreferences.getString(PASSWORD_KEY, ""))) {
                     error.setText("Old password wrong");
                     old.selectAll();
@@ -102,9 +110,9 @@ public class CodeActivty extends AppCompatActivity {
                 edit.putString(PASSWORD_KEY, firstNew.getText().toString());
                 edit.apply();
                 Toast.makeText(CodeActivty.this, "Password changed", Toast.LENGTH_LONG).show();
+                alertDialog.dismiss();
             }
         });
-        builder.create().show();
 
     }
 
