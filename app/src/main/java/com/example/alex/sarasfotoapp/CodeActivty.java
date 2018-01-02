@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -27,6 +28,7 @@ public class CodeActivty extends AppCompatActivity {
     private EditText passwordRepeatTextField;
     private Button saveButton;
     private ViewMode viewMode;
+    private EditText mainPassWord;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +46,16 @@ public class CodeActivty extends AppCompatActivity {
             setPassword();
         }
         passwordMainTextField.selectAll();
+        mainPassWord = (EditText) findViewById(R.id.password1);
+        mainPassWord.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (viewMode.equals(ViewMode.REQUEST) || viewMode.equals(ViewMode.REQUEST_AND_RETURN)) {
+                    saveOrGo(v);
+                }
+                return false;
+            }
+        });
     }
 
     @Override
