@@ -32,7 +32,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -45,6 +44,8 @@ public class PackageActivity extends AppCompatActivity {
     private static String pathname;
     private boolean openother = false;
     private ListView listView;
+    private ArrayList<File> fotosTaken = new ArrayList<>();
+    private ProgressDialog progressDialog;
 
 
     @Override
@@ -81,16 +82,24 @@ public class PackageActivity extends AppCompatActivity {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
                 AlertDialog.Builder builder= new AlertDialog.Builder(PackageActivity.this);
-                builder.setTitle("Delete?");
-                builder.setMessage("Delete this file?");
-                builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                builder.setTitle("Edit?");
+                builder.setMessage("Wanna delete or rename?");
+                builder.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         fileLookUp.get(adapter.getItem(position)).delete();
                         loadNewPackage();
                     }
                 });
-                builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                builder.setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        File file = fileLookUp.get(adapter.getItem(position));
+                        renameFile(file);
+                        loadNewPackage();
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
@@ -101,6 +110,29 @@ public class PackageActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    private void renameFile(final File file) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Renaming");
+        builder.setMessage("Specify new name");
+        final EditText editText = new EditText(this);
+        editText.setText(file.getName().replace(".sara", ""));
+        builder.setView(editText);
+        builder.setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                File renameFile = new File(file.getParentFile().getAbsolutePath() + File.separator + editText.getText().toString() + ".sara");
+                file.renameTo(renameFile);
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        builder.create().show();
     }
 
 
@@ -158,7 +190,31 @@ public class PackageActivity extends AppCompatActivity {
         switch (requestCode) {
             case CAMERA_PIC_REQUEST:
                 try {
-                    createFile(Collections.singletonList((Bitmap) data.getExtras().get("data")));
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Take another foto?");
+                    builder.setTitle("Do you wanna add another foto to the package?");
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            foto(null);
+                        }
+                    });
+                    builder.setNegativeButton("Done", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            ArrayList<Bitmap> bitmaps = new ArrayList<Bitmap>();
+                            for (File f : fotosTaken) {
+                                bitmaps.add(BitmapFactory.decodeFile(f.getAbsolutePath()));
+                            }
+                            try {
+                                createFile(bitmaps);
+                            } catch (IOException e) {
+                                Toast.makeText(PackageActivity.this, "Could not decode fotos from camers", Toast.LENGTH_LONG).show();
+                                Log.e("error", "decoding foto from camera", e);
+                            }
+                        }
+                    });
+                    builder.create().show();
                 } catch (Exception e) {
                     Log.e("error", "taking picture", e);
                     Toast.makeText(this, "Could not process picture", Toast.LENGTH_LONG).show();
@@ -261,21 +317,27 @@ public class PackageActivity extends AppCompatActivity {
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                String name="default";
-                if(!editText.getText().toString().isEmpty()){
-                    name=editText.getText().toString();
-                }
-                try {
-                    File dir = new File(getFilesDir().getPath()+File.separator+"sentImages");
-                    dir.mkdirs();
-                    File out= new File(dir.getPath(),name+".sara");
-                    out.createNewFile();
-                    writeIntoFile(imagesEncodedList,out);
-                } catch (IOException e) {
-                    Log.e("érror","output file not created",e);
-                    e.printStackTrace();
-                    Toast.makeText(PackageActivity.this,"Error 17",Toast.LENGTH_LONG).show();
-                }
+                Tools.Executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        String name = "default";
+                        if (!editText.getText().toString().isEmpty()) {
+                            name = editText.getText().toString();
+                        }
+                        try {
+                            File dir = new File(getFilesDir().getPath() + File.separator + "sentImages");
+                            dir.mkdirs();
+                            File out = new File(dir.getPath(), name + ".sara");
+                            out.createNewFile();
+                            writeIntoFile(imagesEncodedList, out);
+                        } catch (IOException e) {
+                            Log.e("érror", "output file not created", e);
+                            e.printStackTrace();
+                            Toast.makeText(PackageActivity.this, "Error 17", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+
             }
         });
         builder.create().show();
@@ -283,11 +345,17 @@ public class PackageActivity extends AppCompatActivity {
     }
 
     private void writeIntoFile(final List<Bitmap> imagesEncodedList, final File outputFile) throws IOException {
-        final ProgressDialog progressDialog= new ProgressDialog(this);
-        progressDialog.setMessage("Please wait");
-        progressDialog.setCancelable(false);
-        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        progressDialog.show();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                progressDialog = new ProgressDialog(PackageActivity.this);
+                progressDialog.setMessage("Please wait");
+                progressDialog.setCancelable(false);
+                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                progressDialog.show();
+            }
+        });
+
 
         new Thread(new Runnable() {
             @Override
@@ -400,7 +468,18 @@ public class PackageActivity extends AppCompatActivity {
     public void foto(View view) {
         openother = true;
         Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(cameraIntent, CAMERA_PIC_REQUEST);
+        File outputFile = new File(pathname + File.separator + "temp" + fotosTaken.size()); // context being the Activity pointer
+        try {
+            if (outputFile.exists()) outputFile.delete();
+            File folder = new File(pathname);
+            folder.mkdirs();
+            outputFile.createNewFile();
+            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, getUriForFile(this, "com.example.alex.fileprovider", outputFile));
+            startActivityForResult(cameraIntent, CAMERA_PIC_REQUEST);
+            fotosTaken.add(outputFile);
+        } catch (IOException e) {
+            Toast.makeText(this, "Unable request camers App", Toast.LENGTH_LONG).show();
+        }
     }
 
 

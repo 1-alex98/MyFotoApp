@@ -18,8 +18,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
+
+import static android.view.View.GONE;
 
 public class ShowOffActivity extends AppCompatActivity {
 
@@ -28,7 +31,10 @@ public class ShowOffActivity extends AppCompatActivity {
     private CharSequence code;
     private int pointer=0;
     private ImageButton left;
+    private ImageButton right;
     private ProgressDialog progressDialog;
+    private ArrayList<Bitmap> restoredFiles = new ArrayList<>();
+    private CountDownLatch bitMapLoading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +44,7 @@ public class ShowOffActivity extends AppCompatActivity {
         imageView= (ImageView)findViewById(R.id.imageView);
         file= (File) getIntent().getSerializableExtra("open");
         left=(ImageButton)findViewById(R.id.left);
+        right = (ImageButton) findViewById(R.id.right);
         if(!file.exists()){
             Toast.makeText(this,"File does not exist",Toast.LENGTH_LONG).show();
         }
@@ -45,14 +52,19 @@ public class ShowOffActivity extends AppCompatActivity {
         loadPictureTask.execute();
     }
 
-    private Bitmap loadBitmap(File file, final int i) throws IOException {
+    private Bitmap loadBitmap(final int i) {
+        if (restoredFiles.size() == 0) return null;
+        return restoredFiles.get(i % restoredFiles.size());
+    }
+
+    private void loadBitmaps(File file) throws IOException {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                left.setVisibility(i == 0 ? View.GONE : View.VISIBLE);
+                left.setVisibility(GONE);
+                right.setVisibility(GONE);
             }
         });
-
         File outputDir = this.getCacheDir(); // context being the Activity pointer
 
         BufferedInputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
@@ -67,7 +79,7 @@ public class ShowOffActivity extends AppCompatActivity {
         File outputFile=null;
         long progress=0;
         progressDialog.setMax(fileInputStream.available());
-        while(count<i+1){
+        while (fileInputStream.available() > 1) {
             outputFile = File.createTempFile("temp_"+count+"_", ".png", outputDir);
             FileOutputStream fileOutputStream= new FileOutputStream(outputFile);
             while(true)
@@ -78,7 +90,6 @@ public class ShowOffActivity extends AppCompatActivity {
                 if(fileInputStream.read(buffer)<0)break;
                 int counter;
                 if(buffer[0]==bytes[0]&&Arrays.deepEquals(toContainer(buffer),bytes)){
-                    progress*=1;
                     break;
                 }else {
 
@@ -95,17 +106,43 @@ public class ShowOffActivity extends AppCompatActivity {
             }
             fileOutputStream.flush();
             fileOutputStream.close();
+            final File toutputFile = outputFile;
+            final int tcount = count;
+            bitMapLoading = new CountDownLatch(1);
+            Tools.Executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    restoredFiles.add(BitmapFactory.decodeFile(toutputFile.getAbsolutePath()));
+                    bitMapLoading.countDown();
+                    if (tcount == 0) openFirstImage();
+                }
+            });
             count++;
         }
         fileInputStream.close();
 
-        //TODO: save files to reuse
-        Bitmap bitmap = BitmapFactory.decodeFile(outputFile.getAbsolutePath());
-        if (bitmap==null&&pointer!=0){
-            pointer=0;
-            return loadBitmap(file,pointer);
-        }
-        return bitmap;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    bitMapLoading.await();
+                } catch (InterruptedException e) {
+                    Log.e("error", "thread interrupted", e);
+                }
+                left.setVisibility(View.VISIBLE);
+                right.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void openFirstImage() {
+        if (progressDialog != null && progressDialog.isShowing()) progressDialog.dismiss();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                imageView.setImageBitmap(loadBitmap(0));
+            }
+        });
     }
 
     private Byte[] toContainer(byte[] buffer) {
@@ -137,8 +174,7 @@ public class ShowOffActivity extends AppCompatActivity {
     public void move(View view) {
         if(view.getId()==R.id.right)pointer++;
         else pointer--;
-        LoadPictureTask loadPictureTask= new LoadPictureTask();
-        loadPictureTask.execute();
+        imageView.setImageBitmap(loadBitmap(pointer));
     }
 
     private class LoadPictureTask extends AsyncTask {
@@ -163,14 +199,7 @@ public class ShowOffActivity extends AppCompatActivity {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                final Bitmap bitmap = loadBitmap(file, pointer);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        imageView.setImageBitmap(bitmap);
-                        if (progressDialog != null) progressDialog.dismiss();
-                    }
-                });
+                loadBitmaps(file);
             } catch (IOException e) {
                 Toast.makeText(ShowOffActivity.this, "Image could not be loaded", Toast.LENGTH_LONG).show();
                 Log.e("error", "loding image", e);
