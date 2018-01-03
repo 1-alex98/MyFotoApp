@@ -5,9 +5,8 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.support.annotation.IntegerRes;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
@@ -19,7 +18,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
@@ -31,44 +29,6 @@ public class ShowOffActivity extends AppCompatActivity {
     private int pointer=0;
     private ImageButton left;
     private ProgressDialog progressDialog;
-    private class LoadPictureTask extends AsyncTask{
-
-        @Override
-        protected Object doInBackground(Object[] params) {
-            final CountDownLatch countDownLatch= new CountDownLatch(1);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    progressDialog= new ProgressDialog(ShowOffActivity.this);
-                    progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-                    progressDialog.setTitle("Please wait");
-                    progressDialog.setCancelable(false);
-                    progressDialog.show();
-                    countDownLatch.countDown();
-                }
-            });
-            try {
-                try {
-                    countDownLatch.await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                final Bitmap bitmap = loadBitmap(file, pointer);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        imageView.setImageBitmap(bitmap);
-                        if(progressDialog!=null)progressDialog.dismiss();
-                    }
-                });
-            } catch (IOException e) {
-                Toast.makeText(ShowOffActivity.this,"Image could not be loaded",Toast.LENGTH_LONG).show();
-                Log.e("error","loding image",e);
-            }
-            return null;
-        }
-    }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,7 +117,6 @@ public class ShowOffActivity extends AppCompatActivity {
         return bytes;
     }
 
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -170,8 +129,8 @@ public class ShowOffActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
+    protected void onPause() {
+        super.onPause();
         if(!isFinishing())CodeActivty.password=null;
     }
 
@@ -180,6 +139,44 @@ public class ShowOffActivity extends AppCompatActivity {
         else pointer--;
         LoadPictureTask loadPictureTask= new LoadPictureTask();
         loadPictureTask.execute();
+    }
+
+    private class LoadPictureTask extends AsyncTask {
+
+        @Override
+        protected Object doInBackground(Object[] params) {
+            final CountDownLatch countDownLatch = new CountDownLatch(1);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    progressDialog = new ProgressDialog(ShowOffActivity.this);
+                    progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                    progressDialog.setTitle("Please wait");
+                    progressDialog.setCancelable(false);
+                    progressDialog.show();
+                    countDownLatch.countDown();
+                }
+            });
+            try {
+                try {
+                    countDownLatch.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                final Bitmap bitmap = loadBitmap(file, pointer);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        imageView.setImageBitmap(bitmap);
+                        if (progressDialog != null) progressDialog.dismiss();
+                    }
+                });
+            } catch (IOException e) {
+                Toast.makeText(ShowOffActivity.this, "Image could not be loaded", Toast.LENGTH_LONG).show();
+                Log.e("error", "loding image", e);
+            }
+            return null;
+        }
     }
 
 

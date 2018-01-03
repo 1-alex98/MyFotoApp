@@ -7,20 +7,18 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.channels.FileChannel;
 
 import static android.R.attr.action;
 
@@ -38,6 +36,7 @@ public class OpenFiles extends AppCompatActivity {
         progressDialog.show();
         pathname = getFilesDir().getPath() + File.separator + "stored";
         if(getIntent().getData()==null){
+            Toast.makeText(this, "No file found!", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -48,6 +47,12 @@ public class OpenFiles extends AppCompatActivity {
             Log.e("error","loading file",e);
             finish();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        progressDialog.dismiss();
     }
 
     private void end() {
@@ -62,6 +67,11 @@ public class OpenFiles extends AppCompatActivity {
         ContentResolver contentResolver= getContentResolver();
         Uri uri = intent.getData();
         String name = getContentName(contentResolver, uri);
+        if (name != null && !name.endsWith(".sara")) {
+            Toast.makeText(this, "invalid file type", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
         Log.v("tag" , "Content intent detected: " + action + " : " + intent.getDataString() + " : " + intent.getType() + " : " + name);
         InputStream input = contentResolver.openInputStream(uri);

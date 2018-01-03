@@ -32,6 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -39,6 +40,8 @@ import static android.support.v4.content.FileProvider.getUriForFile;
 
 public class PackageActivity extends AppCompatActivity {
     private static final int PICK_IMAGE_REQUEST = 1;
+    private static final int FILE_SELECT_CODE = 1234;
+    private static final int CAMERA_PIC_REQUEST = 24356;
     private static String pathname;
     private boolean openother = false;
     private ListView listView;
@@ -129,8 +132,8 @@ public class PackageActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
+    protected void onPause() {
+        super.onPause();
         if (openother) {
             openother = false;
             return;
@@ -152,44 +155,64 @@ public class PackageActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        ArrayList<Bitmap> imagesEncodedList;
-        try {
-            // When an Image is picked
-            if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK
-                    && null != data) {
-                // Get the Image from data
-                imagesEncodedList = new ArrayList<>();
-                if(data.getData()!=null){
-
-                    Uri imageUri=data.getData();
-                    imagesEncodedList.add(getBitmapFromUri(imageUri));
-
-
-                } else {
-                    if (data.getClipData() != null) {
-                        ClipData mClipData = data.getClipData();
-                        ArrayList<Uri> mArrayUri = new ArrayList<Uri>();
-                        for (int i = 0; i < mClipData.getItemCount(); i++) {
-
-                            ClipData.Item item = mClipData.getItemAt(i);
-                            Uri uri = item.getUri();
-                            mArrayUri.add(uri);
-
-                            imagesEncodedList.add(getBitmapFromUri(uri));
-                        }
-                        Log.v("LOG_TAG", "Selected Images" + mArrayUri.size());
-                    }
+        switch (requestCode) {
+            case CAMERA_PIC_REQUEST:
+                try {
+                    createFile(Collections.singletonList((Bitmap) data.getExtras().get("data")));
+                } catch (Exception e) {
+                    Log.e("error", "taking picture", e);
+                    Toast.makeText(this, "Could not process picture", Toast.LENGTH_LONG).show();
                 }
+                break;
+            case FILE_SELECT_CODE:
+                if (resultCode == RESULT_OK) {
+                    Intent intent = new Intent(this, OpenFiles.class);
+                    intent.setData(data.getData());
+                    startActivity(intent);
+                }
+                break;
+            case PICK_IMAGE_REQUEST:
+                ArrayList<Bitmap> imagesEncodedList;
+                try {
+                    // When an Image is picked
+                    if (resultCode == RESULT_OK
+                            && null != data) {
+                        // Get the Image from data
+                        imagesEncodedList = new ArrayList<>();
+                        if (data.getData() != null) {
 
-                createFile(imagesEncodedList);
-            } else {
-                Toast.makeText(this, "You haven't picked Image",
-                        Toast.LENGTH_LONG).show();
-            }
-        } catch (Exception e) {
-            Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
-                    .show();
+                            Uri imageUri = data.getData();
+                            imagesEncodedList.add(getBitmapFromUri(imageUri));
+
+
+                        } else {
+                            if (data.getClipData() != null) {
+                                ClipData mClipData = data.getClipData();
+                                ArrayList<Uri> mArrayUri = new ArrayList<Uri>();
+                                for (int i = 0; i < mClipData.getItemCount(); i++) {
+
+                                    ClipData.Item item = mClipData.getItemAt(i);
+                                    Uri uri = item.getUri();
+                                    mArrayUri.add(uri);
+
+                                    imagesEncodedList.add(getBitmapFromUri(uri));
+                                }
+                                Log.v("LOG_TAG", "Selected Images" + mArrayUri.size());
+                            }
+                        }
+
+                        createFile(imagesEncodedList);
+                    } else {
+                        Toast.makeText(this, "You haven't picked Image",
+                                Toast.LENGTH_LONG).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
+                            .show();
+                }
+                break;
         }
+
 
 
         super.onActivityResult(requestCode, resultCode, data);
@@ -229,7 +252,7 @@ public class PackageActivity extends AppCompatActivity {
         return uri.getPath();
     }
 
-    private void createFile(final ArrayList<Bitmap> imagesEncodedList) throws IOException {
+    private void createFile(final List<Bitmap> imagesEncodedList) throws IOException {
         AlertDialog.Builder builder=new AlertDialog.Builder(this);
         builder.setTitle("Name your new package");
         final EditText editText= new EditText(this);
@@ -259,7 +282,7 @@ public class PackageActivity extends AppCompatActivity {
 
     }
 
-    private void writeIntoFile(final ArrayList<Bitmap> imagesEncodedList, final File outputFile) throws IOException {
+    private void writeIntoFile(final List<Bitmap> imagesEncodedList, final File outputFile) throws IOException {
         final ProgressDialog progressDialog= new ProgressDialog(this);
         progressDialog.setMessage("Please wait");
         progressDialog.setCancelable(false);
@@ -355,6 +378,32 @@ public class PackageActivity extends AppCompatActivity {
         }
 
     }
+
+    public void search(View view) {
+
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+
+        try {
+            startActivityForResult(
+                    Intent.createChooser(intent, "Select a File to Upload"),
+                    FILE_SELECT_CODE);
+            openother = true;
+        } catch (android.content.ActivityNotFoundException ex) {
+            // Potentially direct the user to the Market with a Dialog
+            Toast.makeText(this, "Please install a File Manager.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void foto(View view) {
+        openother = true;
+        Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        startActivityForResult(cameraIntent, CAMERA_PIC_REQUEST);
+    }
+
+
     private class StableArrayAdapter extends ArrayAdapter<String> {
 
         HashMap<String, Integer> mIdMap = new HashMap<String, Integer>();
