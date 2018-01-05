@@ -68,48 +68,65 @@ public class PackageActivity extends AppCompatActivity {
             fileLookUp.put(insert,file);
         }
         final StableArrayAdapter adapter = new StableArrayAdapter(this, android.R.layout.simple_list_item_1, fileNames);
-        listView.setAdapter(adapter);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        runOnUiThread(new Runnable() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                openother=true;
-                Intent intent= new Intent(PackageActivity.this, ShowOffActivity.class);
-                intent.putExtra("open",fileLookUp.get(adapter.getItem(position)));
-                startActivity(intent);
-            }
-        });
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-                AlertDialog.Builder builder= new AlertDialog.Builder(PackageActivity.this);
-                builder.setTitle("Edit?");
-                builder.setMessage("Wanna delete or rename?");
-                builder.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+            public void run() {
+                listView.setAdapter(adapter);
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        fileLookUp.get(adapter.getItem(position)).delete();
-                        loadNewPackage();
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        openother=true;
+                        Intent intent= new Intent(PackageActivity.this, ShowOffActivity.class);
+                        intent.putExtra("open",fileLookUp.get(adapter.getItem(position)));
+                        startActivity(intent);
                     }
                 });
-                builder.setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+                listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        File file = fileLookUp.get(adapter.getItem(position));
-                        renameFile(file);
-                        loadNewPackage();
+                    public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
+                        AlertDialog.Builder builder= new AlertDialog.Builder(PackageActivity.this);
+                        builder.setTitle("Edit?");
+                        builder.setMessage("Wanna delete or rename?");
+                        builder.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                fileLookUp.get(adapter.getItem(position)).delete();
+                                loadNewPackage();
+                            }
+                        });
+                        builder.setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                final File file = fileLookUp.get(adapter.getItem(position));
+                                renameFile(file);
+                                Tools.Executor.execute(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        while(file.exists()){
+                                            try {
+                                                Thread.sleep(500);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                        loadNewPackage();
+                                    }
+                                });
+                            }
+                        });
+                        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+                        builder.create().show();
+                        return true;
                     }
                 });
-                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                });
-                builder.create().show();
-                return true;
-            }
-        });
 
+            }
+        });
     }
 
     private void renameFile(final File file) {
@@ -119,7 +136,7 @@ public class PackageActivity extends AppCompatActivity {
         final EditText editText = new EditText(this);
         editText.setText(file.getName().replace(".sara", ""));
         builder.setView(editText);
-        builder.setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("Rename now", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 File renameFile = new File(file.getParentFile().getAbsolutePath() + File.separator + editText.getText().toString() + ".sara");
