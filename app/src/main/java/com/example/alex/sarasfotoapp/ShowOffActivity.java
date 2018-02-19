@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
-import static android.view.View.GONE;
-
 public class ShowOffActivity extends AppCompatActivity {
 
     private File file;
@@ -35,6 +33,7 @@ public class ShowOffActivity extends AppCompatActivity {
     private ProgressDialog progressDialog;
     private ArrayList<Bitmap> restoredFiles = new ArrayList<>();
     private CountDownLatch bitMapLoading;
+    private int pictureNumber = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,19 +53,14 @@ public class ShowOffActivity extends AppCompatActivity {
 
     private Bitmap loadBitmap(final int i) {
         if (restoredFiles.size() == 0) return null;
+        if (pictureNumber > 0 && restoredFiles.size() - 1 < i) {
+            Toast.makeText(this, "Some pictures are not jet loaded!", Toast.LENGTH_LONG).show();
+        }
         return restoredFiles.get(i % restoredFiles.size());
     }
 
     private void loadBitmaps(File file) throws IOException {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                left.setVisibility(GONE);
-                right.setVisibility(GONE);
-            }
-        });
         File outputDir = this.getCacheDir(); // context being the Activity pointer
-
         BufferedInputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
         char[] chars = getString(R.string.code).toCharArray();
         Byte[] bytes=new Byte[chars.length];
@@ -76,9 +70,16 @@ public class ShowOffActivity extends AppCompatActivity {
         }
 
         int count=0;
-        File outputFile=null;
+        File outputFile;
         long progress=0;
-        progressDialog.setMax(fileInputStream.available());
+
+        if (fileInputStream.read() == -1) {
+            int reader;
+            if ((reader = fileInputStream.read()) > 0) {
+                pictureNumber = reader;
+            }
+        }
+        progressDialog.setMax(fileInputStream.available() / pictureNumber > 0 ? pictureNumber : 1);
         while (fileInputStream.available() > 1) {
             outputFile = File.createTempFile("temp_"+count+"_", ".png", outputDir);
             FileOutputStream fileOutputStream= new FileOutputStream(outputFile);
@@ -120,7 +121,6 @@ public class ShowOffActivity extends AppCompatActivity {
             count++;
         }
         fileInputStream.close();
-
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -129,8 +129,7 @@ public class ShowOffActivity extends AppCompatActivity {
                 } catch (InterruptedException e) {
                     Log.e("error", "thread interrupted", e);
                 }
-                left.setVisibility(View.VISIBLE);
-                right.setVisibility(View.VISIBLE);
+                Toast.makeText(ShowOffActivity.this, "All pictures loaded!", Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -160,6 +159,7 @@ public class ShowOffActivity extends AppCompatActivity {
 
         if (CodeActivty.password==null){
             Intent intent= new Intent(this,CodeActivty.class);
+            intent.putExtra(CodeActivty.EXTRA_NOT_STARTUP, true);
             intent.putExtra(CodeActivty.returnKey,true);
             startActivity(intent);
         }

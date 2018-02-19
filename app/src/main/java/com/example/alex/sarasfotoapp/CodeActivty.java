@@ -17,9 +17,14 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 public class CodeActivty extends AppCompatActivity {
 
     public static final String returnKey="return";
+    public static final String EXTRA_NOT_STARTUP = "notStartup";
     private static final String PREFERENCE_KEY="Sara";
     private static final String PASSWORD_KEY="password";
     public static String password;
@@ -56,6 +61,29 @@ public class CodeActivty extends AppCompatActivity {
                 return false;
             }
         });
+        if (!getIntent().getBooleanExtra(EXTRA_NOT_STARTUP, false)) {
+            try {
+                deleteTemp();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    void delete(File f) throws IOException {
+        if (f.isDirectory()) {
+            for (File c : f.listFiles())
+                delete(c);
+        }
+        if (!f.delete())
+            throw new FileNotFoundException("Failed to delete file: " + f);
+    }
+
+    private void deleteTemp() throws IOException {
+        File dir = new File(getFilesDir().getPath() + File.separator + "sentImages");
+        if (dir.exists()) {
+            delete(dir);
+        }
     }
 
     @Override

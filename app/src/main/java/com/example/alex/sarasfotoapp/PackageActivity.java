@@ -176,6 +176,7 @@ public class PackageActivity extends AppCompatActivity {
         if (CodeActivty.password==null){
             Intent intent= new Intent(this,CodeActivty.class);
             intent.putExtra(CodeActivty.returnKey,true);
+            intent.putExtra(CodeActivty.EXTRA_NOT_STARTUP, true);
             startActivity(intent);
         }
     }
@@ -377,7 +378,12 @@ public class PackageActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                ArrayList<File> Files= new ArrayList<>();
+                try {
+                    writeNumberOfPhotos(outputFile, imagesEncodedList.size());
+                } catch (IOException e) {
+                    Log.e("error", "error writing number of pictures to files", e);
+                    e.printStackTrace();
+                }
                 for(Bitmap bitmap:imagesEncodedList){
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
                     bitmap.compress(Bitmap.CompressFormat.PNG, 0 /*ignored for PNG*/, bos);
@@ -394,6 +400,14 @@ public class PackageActivity extends AppCompatActivity {
             }
         }).run();
 
+    }
+
+    private void writeNumberOfPhotos(File outputFile, int size) throws IOException {
+        FileOutputStream fos = new FileOutputStream(outputFile, true);
+        fos.write(-1);
+        fos.write(size);
+        fos.flush();
+        fos.close();
     }
 
     private void send(File outputFile) {
