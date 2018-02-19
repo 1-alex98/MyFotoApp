@@ -32,6 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -156,6 +157,9 @@ public class PackageActivity extends AppCompatActivity {
     private List<File> getListFiles(File parentDir) {
         ArrayList<File> inFiles = new ArrayList<File>();
         File[] files = parentDir.listFiles();
+        if(files==null){
+            return Collections.emptyList();
+        }
         for (File file : files) {
             if (file.isDirectory()) {
                 inFiles.addAll(getListFiles(file));
