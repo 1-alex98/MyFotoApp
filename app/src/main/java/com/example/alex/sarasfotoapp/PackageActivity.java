@@ -95,7 +95,7 @@ public class PackageActivity extends AppCompatActivity {
                                 loadNewPackage();
                             }
                         });
-                        builder.setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+                        builder.setNegativeButton("Rename", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 final File file = fileLookUp.get(adapter.getItem(position));
@@ -115,7 +115,7 @@ public class PackageActivity extends AppCompatActivity {
                                 });
                             }
                         });
-                        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        builder.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 dialog.dismiss();
@@ -408,7 +408,7 @@ public class PackageActivity extends AppCompatActivity {
 
     private void writeNumberOfPhotos(File outputFile, int size) throws IOException {
         FileOutputStream fos = new FileOutputStream(outputFile, true);
-        fos.write(-1);
+        fos.write(127);
         fos.write(size);
         fos.flush();
         fos.close();

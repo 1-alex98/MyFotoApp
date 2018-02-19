@@ -4,6 +4,8 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -53,10 +55,15 @@ public class ShowOffActivity extends AppCompatActivity {
 
     private Bitmap loadBitmap(final int i) {
         if (restoredFiles.size() == 0) return null;
-        if (pictureNumber > 0 && restoredFiles.size() - 1 < i) {
+        if (pictureNumber > 0 && restoredFiles.size() - 1 < modTheOtherWay(i,pictureNumber)) {
             Toast.makeText(this, "Some pictures are not jet loaded!", Toast.LENGTH_LONG).show();
         }
-        return restoredFiles.get(i % restoredFiles.size());
+        return restoredFiles.get(modTheOtherWay(i,restoredFiles.size()));
+    }
+
+    private int modTheOtherWay(int i, int n){
+        i= i>=0?i%n:n-(Math.abs(i)%n)-1;
+        return i;
     }
 
     private void loadBitmaps(File file) throws IOException {
@@ -72,17 +79,27 @@ public class ShowOffActivity extends AppCompatActivity {
         int count=0;
         File outputFile;
         long progress=0;
+        int preread[]= new int[2];
+        boolean readSecondInt=false;
 
-        if (fileInputStream.read() == -1) {
-            int reader;
-            if ((reader = fileInputStream.read()) > 0) {
-                pictureNumber = reader;
+        if ((preread[0]=fileInputStream.read()) == 127) {
+            readSecondInt=true;
+            if ((preread[1] = fileInputStream.read()) > 0) {
+                pictureNumber = preread[1];
             }
         }
-        progressDialog.setMax(fileInputStream.available() / pictureNumber > 0 ? pictureNumber : 1);
+        int bytesToLoad = pictureNumber > 0 ? fileInputStream.available() / pictureNumber : fileInputStream.available();
+        progressDialog.setMax(bytesToLoad);
+        Log.i("loading photo","Having"+bytesToLoad+" bytes to load");
         while (fileInputStream.available() > 1) {
             outputFile = File.createTempFile("temp_"+count+"_", ".png", outputDir);
             FileOutputStream fileOutputStream= new FileOutputStream(outputFile);
+            if(count==0 && pictureNumber<0){
+                fileOutputStream.write(preread[0]);
+                if(readSecondInt){
+                    fileOutputStream.write(preread[1]);
+                }
+            }
             while(true)
             {
                 byte[] buffer=new byte[bytes.length];
@@ -113,7 +130,27 @@ public class ShowOffActivity extends AppCompatActivity {
             Tools.Executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    restoredFiles.add(BitmapFactory.decodeFile(toutputFile.getAbsolutePath()));
+                    try {
+                        ExifInterface exif = new ExifInterface(toutputFile.getAbsolutePath());
+                        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
+                        Log.d("EXIF", "Exif: " + orientation);
+                        Matrix matrix = new Matrix();
+                        if (orientation == ExifInterface.ORIENTATION_ROTATE_90) {
+                            matrix.postRotate(90);
+                        }
+                        else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) {
+                            matrix.postRotate(180);
+                        }
+                        else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) {
+                            matrix.postRotate(270);
+                        }
+
+                        Bitmap bitmap = BitmapFactory.decodeFile(toutputFile.getAbsolutePath());
+                        restoredFiles.add(Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true));
+                    } catch (IOException e) {
+                        Log.e("photo loading","exif failed",e);
+                        e.printStackTrace();
+                    }
                     bitMapLoading.countDown();
                     if (tcount == 0) openFirstImage();
                 }
