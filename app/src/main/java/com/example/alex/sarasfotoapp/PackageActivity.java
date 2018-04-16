@@ -388,10 +388,22 @@ public class PackageActivity extends AppCompatActivity {
                     Log.e("error", "error writing number of pictures to files", e);
                     e.printStackTrace();
                 }
+
+                ArrayList<byte[]> imagesInBytes= new ArrayList<>();
+
                 for(Bitmap bitmap:imagesEncodedList){
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
                     bitmap.compress(Bitmap.CompressFormat.PNG, 0 /*ignored for PNG*/, bos);
                     byte[] bitmapdata = bos.toByteArray();
+                    imagesInBytes.add(bitmapdata);
+                    try {
+                        writeLengthOfPhoto(outputFile,bitmapdata);
+                    } catch (IOException e) {
+                        Log.e("error","while writing length of image",e);
+                        e.printStackTrace();
+                    }
+                }
+                for (byte[] bitmapdata:imagesInBytes){
                     try {
                         writeToFile(outputFile, bitmapdata);
                     } catch (IOException e) {
@@ -408,8 +420,14 @@ public class PackageActivity extends AppCompatActivity {
 
     private void writeNumberOfPhotos(File outputFile, int size) throws IOException {
         FileOutputStream fos = new FileOutputStream(outputFile, true);
-        fos.write(127);
-        fos.write(size);
+        fos.write(IOUtils.bytesToInt(size));
+        fos.flush();
+        fos.close();
+    }
+
+    private void writeLengthOfPhoto(File outputFile, byte[] data) throws IOException {
+        FileOutputStream fos = new FileOutputStream(outputFile, true);
+        fos.write(IOUtils.bytesToInt(data.length));
         fos.flush();
         fos.close();
     }
@@ -428,16 +446,6 @@ public class PackageActivity extends AppCompatActivity {
     private void writeToFile(File outputFile, byte[] bitmapdata) throws IOException {
         FileOutputStream fos = new FileOutputStream(outputFile,true);
         fos.write(bitmapdata);
-        fos.flush();
-        //TODO: save more infos in the sara file, like where the pictures start and how many are stored in the paticular file
-        char[] chars = getString(R.string.code).toCharArray();
-        byte[] bytes=new byte[chars.length];
-        int i=0;
-        for(char cha:chars){
-            bytes[i++]=(byte) cha;
-        }
-        fos.write(bytes);
-//
         fos.flush();
         fos.close();
     }
@@ -503,6 +511,7 @@ public class PackageActivity extends AppCompatActivity {
     public void foto(View view) {
         openother = true;
         Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        fotosTaken.clear();
         File outputFile = new File(pathname + File.separator + "temp" + fotosTaken.size()); // context being the Activity pointer
         try {
             if (outputFile.exists()) outputFile.delete();
